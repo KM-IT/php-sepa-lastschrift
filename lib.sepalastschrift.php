@@ -213,7 +213,7 @@ class SEPALastschrift
         }
         // Sparkasse Arnstadt-Ilmenau erlaubt hier nur a-zA-Z0-9 sowie -':?,+()/. und Leerzeichen
         if (! preg_match("#^[A-Za-z0-9\+\?/\-:\(\)\.,' ]{1,140}$#", $subject)) {
-            $this->error("invalid subject $subject: #^[A-Za-z0-9\+\?/\-:\(\)\.,' ]{1,140}$#");
+            static::onError(["invalid subject $subject: #^[A-Za-z0-9\+\?/\-:\(\)\.,' ]{1,140}$#"]);
         }
     }
     protected function checkName(&$name) {
