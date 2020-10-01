@@ -21,8 +21,6 @@
  *
  * https://github.com/michael-dev/php-sepa-lastschrift
  */
-global $sepaLastschriftXMLVersion; // 008.002.02
-global $sepaLastschriftXSD;
 
 // ../media/
 
@@ -33,6 +31,8 @@ global $sepaLastschriftXSD;
  */
 class SEPALastschrift
 {
+	public static $sepaLastschriftXMLVersion = '008.003.02';
+	public static $sepaLastschriftXSDDirectory = __DIR__;
     /**
      * Y-m-d\TH:i:s\Z
      * @var DateTime
@@ -361,10 +361,8 @@ class SEPALastschrift
         $xml->endElement(); /* DrctDbtTxInf */
     }
 
-    public function asXML()
+    public function asXML($validateXML = true)
     {
-        global $sepaLastschriftXMLVersion; // 008.002.02
-        global $sepaLastschriftXSD; // ../media/
         /**
          * output
          */
@@ -372,12 +370,14 @@ class SEPALastschrift
         $xml->openMemory();
         $xml->startDocument('1.0', 'UTF-8');
 
-        $painVersion = "008.002.02";
+        $painVersion = static::$sepaLastschriftXMLVersion;
+        //Backwards compatibility: trigger validation by existance of global variable
+        global $sepaLastschriftXMLVersion;
         if (isset($sepaLastschriftXMLVersion)) {
             $painVersion = $sepaLastschriftXMLVersion;
+            static::$sepaLastschriftXMLVersion = $painVersion;
+            $validateXML = true;
         }
-        $painXSDFile = "pain." . $painVersion . ".xsd";
-
         $xml->startElement('Document');
         $xml->writeAttribute('xmlns', 'urn:iso:std:iso:20022:tech:xsd:pain.' . $painVersion);
         $xml->writeAttributeNS('xsi', 'schemaLocation', 'http://www.w3.org/2001/XMLSchema-instance', 'urn:iso:std:iso:20022:tech:xsd:pain.' . $painVersion . ' ' . $painXSDFile);
@@ -393,29 +393,44 @@ class SEPALastschrift
         $xmlString = $xml->outputMemory(TRUE);
 
         // verify xml
-        if (isset($sepaLastschriftXSD)) {
-            $xsdFile = $sepaLastschriftXSD . "/" . $painXSDFile;
-            if (! is_file($xsdFile)) {
-                static::validationError("Die Schema-Datei $xsdFile wurde nicht gefunden.");
-                return false;
-            } else {
-                $tempDom = new DOMDocument();
-                $tempDom->loadXML($xmlString);
-                if (! $tempDom->schemaValidate($xsdFile)) {
-                    $this->validationError("Die erzeugten Daten sind ungültig.");
-                    return false;
-                }
-            }
+        if ($validateXML) {
+            if(!self::validateXML($xmlString)) return false;
         }
 
         return $xmlString;
+    }
+    
+    public static function validateXML($xmlString) {
+    	$xsdFile = static::$sepaLastschriftXSDDirectory . "/" . "pain." . static::$sepaLastschriftXMLVersion . ".xsd";
+    	if (! is_file($xsdFile)) {
+    		static::validationError("Die Schema-Datei $xsdFile wurde nicht gefunden.");
+    		return false;
+    	} else {
+    		libxml_use_internal_errors(true);
+    		$tempDom = new DOMDocument();
+    		$tempDom->loadXML($xmlString);
+    		if (!$result =  $tempDom->schemaValidate($xsdFile)) {
+    			/**
+    			 * 
+    			 * @var LibXMLError[] $errors
+    			 */
+    			$errors = libxml_get_errors();
+    			$messages = [];
+    			foreach ($errors as $error) {
+    				$messages[] = $error->message;
+    			}
+    			
+    			static::validationError("Die erzeugten Daten sind ungültig.\n" . implode("\n", $messages));
+    			return false;
+    		}
+    	}
+    	return true;
     }
 
     protected static function onError($messagesArray) {
         die(print_r($messagesArray,1));
     }
     protected static function validationError($message) {
-        //globale Funktion, muss definiert sein
-        add_message($message);
+    	die($message);
     }
 }

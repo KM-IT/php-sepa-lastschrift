@@ -23,15 +23,13 @@ $lastschriften->addLastschrift( /* id */ "randomtxid",
 $lastschriften->addLastschrift("randomtxid2", "DE789IBAN", "BICEXAMPLE2", "Test Me2", "Mandate-Id122", new DateTime("2013-05-22"), 44.00, "blabla SSS","RCUR");
 $lastschriften->addLastschrift("randomtxid3", "DE012IBAN", "BICEXAMPLE3", "Test Me3", "Mandate-Id123", new DateTime("2013-05-22"), 44.00, "blabla SSS","RCUR");
 
-# enable self-test: optional
-global $sepaLastschriftXMLVersion; # 008.002.02
-global $sepaLastschriftXSD; # ../media/
-$sepaLastschriftXSD = dirname(__FILE__);
+
 function add_message($msg, $class="hinweis") {
   echo $msg."\n";
 }
 
 # output
 header("Content-type: text/xml");
+//with validation
 echo $lastschriften->asXML();
 
